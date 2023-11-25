@@ -26,9 +26,17 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     const courseCollection = client.db("studentDb").collection("course");
+    const enrollCollection = client.db("studentDb").collection("enroll");
 
     app.get("/course", async (req, res) => {
       const result = await courseCollection.find().toArray();
+      res.send(result);
+    });
+
+    // enroll collection
+    app.post("/enroll", async (req, res) => {
+      const enrollCourse = req.body;
+      const result = await enrollCollection.insertOne(enrollCourse);
       res.send(result);
     });
 
