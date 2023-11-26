@@ -34,6 +34,12 @@ async function run() {
     });
 
     // enroll collection
+    app.get("/enroll", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await enrollCollection.find(query).toArray();
+      res.send(result);
+    });
     app.post("/enroll", async (req, res) => {
       const enrollCourse = req.body;
       const result = await enrollCollection.insertOne(enrollCourse);
