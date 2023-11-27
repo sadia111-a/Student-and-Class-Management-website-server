@@ -25,8 +25,38 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+    const userCollection = client.db("studentDb").collection("users");
+    const teacherCollection = client.db("studentDb").collection("teachers");
     const courseCollection = client.db("studentDb").collection("course");
     const enrollCollection = client.db("studentDb").collection("enroll");
+
+    // user related api
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      // insert email if user doesn't exist
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists", insertedId: null });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+    // send database teacher data
+    app.get("/teachers", async (req, res) => {
+      const result = await teacherCollection.find().toArray();
+      res.send(result);
+    });
+    app.post("/teachers", async (req, res) => {
+      const teacherReq = req.body;
+      const result = await teacherCollection.insertOne(teacherReq);
+      res.send(result);
+    });
 
     app.get("/course", async (req, res) => {
       const result = await courseCollection.find().toArray();
