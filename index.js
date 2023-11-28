@@ -82,6 +82,7 @@ async function run() {
       const query = { email: email };
       const user = await userCollection.findOne(query);
       let admin = false;
+
       if (user) {
         admin = user?.role === "admin";
       }
@@ -157,9 +158,23 @@ async function run() {
       }
     );
 
+    // Get user role
+    app.get("/users/role/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await userCollection.findOne({ email });
+      res.send(result);
+    });
+
     // course related api
     app.get("/course", async (req, res) => {
       const result = await courseCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/course/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await courseCollection.findOne(query);
       res.send(result);
     });
     app.post("/course", async (req, res) => {
@@ -168,10 +183,65 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/course/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          title: item.title,
+          price: item.price,
+          description: item.description,
+          image: item.image,
+        },
+      };
+      const result = await courseCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+    app.delete("/course/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await courseCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // class related api
+    app.get("/classes", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await myClassCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.get("/classes/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await myClassCollection.findOne(query);
+      res.send(result);
+    });
     app.post("/classes", async (req, res) => {
       const course = req.body;
       const result = await myClassCollection.insertOne(course);
+      res.send(result);
+    });
+    app.patch("/classes/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          title: item.title,
+          price: item.price,
+          description: item.description,
+          image: item.image,
+        },
+      };
+      const result = await myClassCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+    app.delete("/classes/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await myClassCollection.deleteOne(query);
       res.send(result);
     });
 
