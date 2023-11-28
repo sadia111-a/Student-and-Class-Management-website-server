@@ -29,6 +29,7 @@ async function run() {
     const userCollection = client.db("studentDb").collection("users");
     const teacherCollection = client.db("studentDb").collection("teachers");
     const courseCollection = client.db("studentDb").collection("course");
+    const myClassCollection = client.db("studentDb").collection("classes");
     const enrollCollection = client.db("studentDb").collection("enroll");
 
     // jwt related api
@@ -42,7 +43,7 @@ async function run() {
     });
     // middlewares
     const verifyToken = (req, res, next) => {
-      console.log("inside verify token", req.headers.authorization);
+      // console.log("inside verify token", req.headers.authorization);
       if (!req.headers.authorization) {
         return res.status(401).send({ message: "unauthorized access" });
       }
@@ -55,9 +56,20 @@ async function run() {
         next();
       });
     };
+    //  use verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
 
     // users related api
-    app.get("/users", verifyToken, async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
@@ -88,19 +100,24 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/users/admin/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          role: "admin",
-        },
-      };
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
-    });
+    app.patch(
+      "/users/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            role: "admin",
+          },
+        };
+        const result = await userCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      }
+    );
     // send database teacher data
-    app.get("/teachers", async (req, res) => {
+    app.get("/teachers", verifyToken, verifyAdmin, async (req, res) => {
       const result = await teacherCollection.find().toArray();
       res.send(result);
     });
@@ -110,8 +127,51 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/teachers/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      const query = { email: email };
+      const user = await teacherCollection.findOne(query);
+      let teacher = false;
+      if (user) {
+        teacher = user?.role === "teacher";
+      }
+      res.send({ teacher });
+    });
+    app.patch(
+      "/teachers/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            role: "teacher",
+          },
+        };
+        const result = await teacherCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      }
+    );
+
+    // course related api
     app.get("/course", async (req, res) => {
       const result = await courseCollection.find().toArray();
+      res.send(result);
+    });
+    app.post("/course", async (req, res) => {
+      const course = req.body;
+      const result = await courseCollection.insertOne(course);
+      res.send(result);
+    });
+
+    // class related api
+    app.post("/classes", async (req, res) => {
+      const course = req.body;
+      const result = await myClassCollection.insertOne(course);
       res.send(result);
     });
 
