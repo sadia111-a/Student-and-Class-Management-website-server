@@ -164,8 +164,8 @@ async function run() {
     app.get("/users/role/:email", async (req, res) => {
       const email = req.params.email;
       const result = await userCollection.findOne({ email });
-      const result1 = await teacherCollection.findOne({ email });
-      res.send({ result, result1 });
+
+      res.send(result);
     });
 
     // course related api
@@ -277,6 +277,15 @@ async function run() {
       });
     });
     // payment related api
+    app.get("/payments/:email", verifyToken, async (req, res) => {
+      const query = { email: req.params.email };
+      if (req.params.email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = await paymentCollection.insertOne(payment);
@@ -290,6 +299,18 @@ async function run() {
       // };
       // const deleteResult = await enrollCollection.deleteMany(query);
       res.send(paymentResult);
+    });
+
+    // stats or analytics
+    app.get("/users-stats", async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      const courses = await courseCollection.estimatedDocumentCount();
+      const students = await enrollCollection.estimatedDocumentCount();
+      res.send({
+        users,
+        courses,
+        students,
+      });
     });
 
     // Send a ping to confirm a successful connection
