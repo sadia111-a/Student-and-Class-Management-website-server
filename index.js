@@ -33,13 +33,14 @@ async function run() {
     const myClassCollection = client.db("studentDb").collection("classes");
     const enrollCollection = client.db("studentDb").collection("enroll");
     const paymentCollection = client.db("studentDb").collection("payments");
+    const reviewCollection = client.db("studentDb").collection("reviews");
 
     // jwt related api
     // token create
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
+        expiresIn: "3600h",
       });
       res.send({ token });
     });
@@ -168,10 +169,51 @@ async function run() {
       res.send(result);
     });
 
+    // request course approve
+    app.patch("/course/approve/:id", verifyToken, async (req, res) => {
+      const courseId = req.params.id;
+
+      try {
+        const result = await courseCollection.updateOne(
+          { _id: new ObjectId(courseId) },
+          { $set: { status: "Accepted" } }
+        );
+
+        if (result.matchedCount > 0) {
+          // If the document was found and matched, consider it a success
+          res.json({ success: true, message: "Course approved" });
+        } else {
+          // If the document wasn't found, consider it an error
+          res.status(404).json({ error: "Course not found" });
+        }
+      } catch (error) {
+        console.error("MongoDB Update Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    // review student
+    app.get("/review", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+
     // course related api
     app.get("/course", async (req, res) => {
-      const result = await courseCollection.find().toArray();
+      const page = parseInt(req.query.page);
+      const size = parseInt(req.query.size);
+
+      console.log("pagination query", page, size);
+      const result = await courseCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
+    });
+    app.get("/courseCount", async (req, res) => {
+      const count = await courseCollection.estimatedDocumentCount();
+      res.send({ count });
     });
 
     app.get("/course/:id", async (req, res) => {
